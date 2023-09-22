@@ -70,9 +70,8 @@ int parse_args(int argc, char** argv, args* cmd, int* last_parsed) {
   long num;
   cmd->bios_size = DEFAULT_BIOS_SIZE;
   cmd->bios_offset = DEFAULT_BIOS_OFFSET;
+  *last_parsed = 0;
 
-  // Parse everything except the last argument, which is the output
-  // file name
   for(i = 1; i < argc; ++i) {
     if(!strcmp(argv[i], "/?")) {
       // Fuck the rest of the parsing
@@ -85,6 +84,7 @@ int parse_args(int argc, char** argv, args* cmd, int* last_parsed) {
         return 1;
       }
       cmd->bios_offset = (uint32_t)num;
+      *last_parsed = i;
     } else if(!strcmp(argv[i], "-s")) {
       status = parse_num(&num, argv[++i], 16);
       if(status) {
@@ -92,15 +92,17 @@ int parse_args(int argc, char** argv, args* cmd, int* last_parsed) {
         return 1;
       }
       cmd->bios_size = (uint32_t)num;
+      *last_parsed = i;
     } else {
-      // If this is the last argument, skip, since it's the path
-      if(i != argc-1) {
+      if(i == argc-1) {
+        // If this is the last argument, skip, since it's the path
+        *last_parsed = i-1;
+      } else {
         printf("Unrecognised token: %s\n", argv[i]);
         return 1;
       }
     }
   }
-  *last_parsed = i;
   return 0;
 }
 
@@ -109,7 +111,7 @@ int dump_bios(uint32_t absolute_offset, uint32_t size, const char* path) {
   uint16_t  offset = absolute_offset & 0x000F;
   uint16_t size_hi = *(((uint16_t*)(&size))+1);
   uint16_t size_lo = *((uint16_t*)(&size));
-
+  
   void far* bios;
   int handle;
   unsigned ret;
@@ -126,7 +128,7 @@ int dump_bios(uint32_t absolute_offset, uint32_t size, const char* path) {
     size_lo,
     path
   );
-
+  
   ret = _dos_creat(path, _A_NORMAL, &handle);
   if(ret) {
     printf("Error opening output file: (code %d) %s\n", ret, strerror(errno));
@@ -154,7 +156,7 @@ int dump_bios(uint32_t absolute_offset, uint32_t size, const char* path) {
     printf("Error closing output file: (code %d) %s\n", ret, strerror(errno));
     return ret;
   }
-
+  
   return 0;
 }
 
@@ -164,7 +166,7 @@ int main(int argc, char **argv) {
   int last_parsed;
 
   // Begin
-
+  
   memset(&cmd, 0x00, sizeof(args));
   status = parse_args(argc, argv, &cmd, &last_parsed);
   if(status) {
@@ -174,7 +176,7 @@ int main(int argc, char **argv) {
     return 1;
   }
   cmd.path = argv[argc-1];
-  if(last_parsed == argc) {
+  if(last_parsed == argc-1) {
     printf("No output specified. Dumping in current directory as BIOS.BIN\n");
     cmd.path = "BIOS.BIN";
   }
