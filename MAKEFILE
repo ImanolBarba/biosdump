@@ -1,0 +1,27 @@
+# This is an OpenWatcom Makefile, not GNU
+
+CC=C:\WATCOM19\BINW\WCC.EXE
+LD=C:\WATCOM19\BINW\WLINK.EXE
+
+CFLAGS = -0 
+  
+OBJS = biosdump.obj
+
+DEBUG_ENABLED = $(DEBUG)
+
+!ifeq DEBUG 1  
+CFLAGS += -d2
+WLFLAGS += debug all option symfile
+!endif
+
+all: biosdump.exe
+	
+.c.obj:
+	$(CC) $(CFLAGS) $< 
+
+biosdump.exe: $(OBJS)
+	$(LD) $(WLFLAGS) file *.obj name $@ 
+				
+clean: .SYMBOLIC
+  del *.obj > NUL
+  del *.exe > NUL       
